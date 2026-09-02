@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HabitFlow — Modern Daily Habit Tracker & Streak Builder</title>
+  <meta name="description" content="A clean, modern, beginner-friendly habit tracker web application. Track daily habits, build streaks, view monthly calendars, and analyze weekly progress.">
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+  
+  <!-- Google Fonts: Plus Jakarta Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Confetti Canvas for 100% Day Completion Celebrations -->
+  <canvas id="confetti-canvas" aria-hidden="true"></canvas>
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container" class="toast-container" aria-live="polite" aria-atomic="true"></div>
+
+  <!-- App Wrapper -->
+  <div class="app-container">
+    
+    <!-- Top Navigation / Header -->
+    <header class="app-header">
+      <div class="header-left">
+        <div class="brand">
+          <div class="brand-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+              <circle cx="12" cy="12" r="4"/>
+            </svg>
+          </div>
+          <div class="brand-text">
+            <h1 class="brand-title">HabitFlow</h1>
+            <span class="brand-subtitle">Daily Tracker</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="header-center">
+        <div class="current-date-badge" id="current-date-badge" title="Today's Date">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+            <line x1="16" y1="2" x2="16" y2="6"></line>
+            <line x1="8" y1="2" x2="8" y2="6"></line>
+            <line x1="3" y1="10" x2="21" y2="10"></line>
+          </svg>
+          <span id="header-date-text">Wednesday, Sep 2</span>
+        </div>
+      </div>
+
+      <div class="header-right">
+        <!-- User Level & XP Chip -->
+        <div class="user-level-chip" id="user-level-chip" title="Click to view Rewards & Badges" role="button" tabindex="0">
+          <div class="level-icon-badge" id="header-level-badge">Lv. 1 🌱</div>
+          <div class="level-xp-info">
+            <div class="level-xp-bar-bg">
+              <div class="level-xp-bar-fill" id="header-xp-bar" style="width: 0%;"></div>
+            </div>
+            <span class="level-xp-text" id="header-xp-text">0/100 XP</span>
+          </div>
+        </div>
+
+        <!-- Quick Add Habit Button -->
+        <button id="btn-add-habit-top" class="btn btn-primary btn-sm" aria-label="Add new habit">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+          <span>New Habit</span>
+        </button>
+
+        <!-- Theme Toggle (Light / Dark) -->
+        <button id="theme-toggle-btn" class="icon-btn" aria-label="Toggle dark mode" title="Toggle Light/Dark Theme">
+          <!-- Sun Icon (for dark mode) -->
+          <svg class="sun-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="5"></circle>
+            <line x1="12" y1="1" x2="12" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="23"></line>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+            <line x1="1" y1="12" x2="3" y2="12"></line>
+            <line x1="21" y1="12" x2="23" y2="12"></line>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+          </svg>
+          <!-- Moon Icon (for light mode) -->
+          <svg class="moon-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+          </svg>
+        </button>
+
+        <!-- Data Options Menu Toggle -->
+        <div class="dropdown-wrapper">
+          <button id="data-menu-btn" class="icon-btn" aria-label="Data and settings menu" title="Data Backup & Reset">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="1"></circle>
+              <circle cx="12" cy="5" r="1"></circle>
+              <circle cx="12" cy="19" r="1"></circle>
+            </svg>
+          </button>
+          <div id="data-dropdown" class="dropdown-menu">
+            <button id="menu-export-btn" class="dropdown-item">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+              </svg>
+              <span>Export JSON Backup</span>
+            </button>
+            <button id="menu-import-btn" class="dropdown-item">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="17 8 12 3 7 8"></polyline>
+                <line x1="12" y1="3" x2="12" y2="15"></line>
+              </svg>
+              <span>Import JSON Backup</span>
+            </button>
+            <div class="dropdown-divider"></div>
+            <button id="menu-seed-btn" class="dropdown-item">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M3 2v6h6"></path>
+                <path d="M21 12A9 9 0 0 0 6 5.3L3 8"></path>
+                <path d="M21 22v-6h-6"></path>
+                <path d="M3 12a9 9 0 0 0 15 6.7l3-2.7"></path>
+              </svg>
+              <span>Reset to Default Habit (Water)</span>
+            </button>
+            <button id="menu-reset-btn" class="dropdown-item text-danger">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="3 6 5 6 21 6"></polyline>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+              </svg>
+              <span>Clear All Habits</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+      
+      <!-- Motivational Hero Card -->
+      <section class="hero-banner" id="hero-banner">
+        <div class="hero-content">
+          <div class="hero-text-block">
+            <div class="hero-greeting" id="hero-greeting">Good evening, Champion! ✨</div>
+            <h2 class="hero-headline" id="hero-headline">Stay consistent, one habit at a time.</h2>
+            <p class="hero-motivation" id="hero-motivation">
+              <span class="motivation-badge" id="motivation-badge">🔥 Let's go!</span>
+              <span id="motivation-text">Mark your habits for today and keep your momentum growing.</span>
+            </p>
+          </div>
+          
+          <!-- Radial Progress / Ring Gauge -->
+          <div class="hero-progress-ring-card">
+            <div class="ring-container">
+              <svg class="progress-ring" width="110" height="110" viewBox="0 0 120 120">
+                <circle class="progress-ring-circle-bg" stroke="var(--border-subtle)" stroke-width="10" fill="transparent" r="48" cx="60" cy="60"/>
+                <circle id="hero-progress-circle" class="progress-ring-circle" stroke="var(--color-primary)" stroke-width="10" stroke-linecap="round" fill="transparent" r="48" cx="60" cy="60" stroke-dasharray="301.59" stroke-dashoffset="301.59"/>
+              </svg>
+              <div class="ring-label">
+                <span class="ring-percentage" id="hero-progress-percent">0%</span>
+                <span class="ring-subtext">Completed</span>
+              </div>
+            </div>
+            <div class="ring-meta">
+              <span id="hero-progress-counts">0 of 0 habits</span>
+              <span class="ring-status-chip" id="hero-status-chip">Pending</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Key Metrics Stats Row -->
+      <section class="metrics-grid" aria-label="Habit summary metrics">
+        <div class="metric-card">
+          <div class="metric-icon icon-primary">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+              <polyline points="22 4 12 14.01 9 11.01"></polyline>
+            </svg>
+          </div>
+          <div class="metric-info">
+            <span class="metric-label">Today's Progress</span>
+            <div class="metric-value-row">
+              <span class="metric-value" id="metric-today-percent">0%</span>
+              <span class="metric-trend" id="metric-today-ratio">0/0 done</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-icon icon-warning">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"></path>
+            </svg>
+          </div>
+          <div class="metric-info">
+            <span class="metric-label">Best Streak</span>
+            <div class="metric-value-row">
+              <span class="metric-value" id="metric-best-streak">0 days</span>
+              <span class="metric-trend text-warning">All-time high</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-icon icon-info">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polyline points="12 6 12 12 16 14"></polyline>
+            </svg>
+          </div>
+          <div class="metric-info">
+            <span class="metric-label">Active Habits</span>
+            <div class="metric-value-row">
+              <span class="metric-value" id="metric-active-count">0</span>
+              <span class="metric-trend" id="metric-frequency-breakdown">Daily & Weekly</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-icon icon-success">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+            </svg>
+          </div>
+          <div class="metric-info">
+            <span class="metric-label">Total Completed</span>
+            <div class="metric-value-row">
+              <span class="metric-value" id="metric-total-completions">0</span>
+              <span class="metric-trend text-success">Lifetime check-ins</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Main Navigation Tabs -->
+      <nav class="view-tabs" role="tablist">
+        <button class="tab-btn active" id="tab-dashboard" role="tab" aria-selected="true" aria-controls="view-dashboard">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="7" height="7"></rect>
+            <rect x="14" y="3" width="7" height="7"></rect>
+            <rect x="14" y="14" width="7" height="7"></rect>
+            <rect x="3" y="14" width="7" height="7"></rect>
+          </svg>
+          <span>Dashboard</span>
+        </button>
+        <button class="tab-btn" id="tab-calendar" role="tab" aria-selected="false" aria-controls="view-calendar">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+            <line x1="16" y1="2" x2="16" y2="6"></line>
+            <line x1="8" y1="2" x2="8" y2="6"></line>
+            <line x1="3" y1="10" x2="21" y2="10"></line>
+          </svg>
+          <span>Habit Calendar</span>
+        </button>
+        <button class="tab-btn" id="tab-stats" role="tab" aria-selected="false" aria-controls="view-stats">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="20" x2="18" y2="10"></line>
+            <line x1="12" y1="20" x2="12" y2="4"></line>
+            <line x1="6" y1="20" x2="6" y2="14"></line>
+          </svg>
+          <span>Progress & Stats</span>
+        </button>
+        <button class="tab-btn" id="tab-rewards" role="tab" aria-selected="false" aria-controls="view-rewards">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="8" r="7"></circle>
+            <polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline>
+          </svg>
+          <span>Rewards & Badges</span>
+          <span class="badge-count-pill" id="tab-unlocked-badge-count">0/8</span>
+        </button>
+      </nav>
+
+      <!-- TAB 1: DASHBOARD VIEW -->
+      <section id="view-dashboard" class="tab-content active" role="tabpanel" aria-labelledby="tab-dashboard">
+        
+        <!-- Filter & Search Controls Toolbar -->
+        <div class="toolbar-card">
+          <div class="search-box">
+            <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input type="text" id="habit-search-input" placeholder="Search habits..." aria-label="Search habits">
+            <button id="btn-clear-search" class="clear-search-btn hidden" aria-label="Clear search">✕</button>
+          </div>
+
+          <div class="filters-group">
+            <!-- Frequency Filter -->
+            <div class="pill-group" role="group" aria-label="Filter by frequency">
+              <button class="pill-btn active" data-freq="all">All</button>
+              <button class="pill-btn" data-freq="daily">Daily</button>
+              <button class="pill-btn" data-freq="weekly">Weekly</button>
+            </div>
+
+            <!-- Category Filter Dropdown / Pills -->
+            <div class="category-select-wrapper">
+              <select id="category-filter-select" aria-label="Filter by category">
+                <option value="all">All Categories</option>
+                <option value="Health">💧 Health</option>
+                <option value="Mindfulness">🧘 Mindfulness</option>
+                <option value="Productivity">⚡ Productivity</option>
+                <option value="Fitness">🏃 Fitness</option>
+                <option value="Learning">📚 Learning</option>
+                <option value="Lifestyle">✨ Lifestyle</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section Header with Quick Counter -->
+        <div class="section-title-bar">
+          <div class="section-title-left">
+            <h3 class="section-title">Today's Habits</h3>
+            <span class="section-badge" id="visible-habits-count">0 items</span>
+          </div>
+          <button id="btn-add-habit-inline" class="btn btn-secondary btn-sm">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            <span>Add Habit</span>
+          </button>
+        </div>
+
+        <!-- Habits List Container -->
+        <div id="habits-list" class="habits-grid">
+          <!-- Dynamically populated by JavaScript -->
+        </div>
+
+        <!-- Empty State (Shown when no habits exist or match filter) -->
+        <div id="empty-state" class="empty-state hidden">
+          <div class="empty-state-icon">🌱</div>
+          <h4 class="empty-state-title" id="empty-state-title">No habits found</h4>
+          <p class="empty-state-desc" id="empty-state-desc">Start your self-improvement journey today. Create your first habit and begin your streak!</p>
+          <button id="btn-empty-add" class="btn btn-primary">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            <span>Add Your First Habit</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- TAB 2: CALENDAR VIEW -->
+      <section id="view-calendar" class="tab-content" role="tabpanel" aria-labelledby="tab-calendar">
+        <div class="calendar-card">
+          <!-- Calendar Top Header -->
+          <div class="calendar-header">
+            <div class="calendar-habit-selector">
+              <label for="calendar-habit-picker">Tracking Habit:</label>
+              <select id="calendar-habit-picker" aria-label="Select habit for calendar view">
+                <!-- Dynamically populated with habits -->
+              </select>
+            </div>
+
+            <!-- Month Navigator Controls -->
+            <div class="month-navigation">
+              <button id="btn-cal-prev-month" class="icon-btn" aria-label="Previous month" title="Previous Month">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <polyline points="15 18 9 12 15 6"></polyline>
+                </svg>
+              </button>
+              <h3 id="calendar-month-year" class="month-year-title">September 2026</h3>
+              <button id="btn-cal-next-month" class="icon-btn" aria-label="Next month" title="Next Month">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <polyline points="9 18 15 12 9 6"></polyline>
+                </svg>
+              </button>
+              <button id="btn-cal-today" class="btn btn-outline btn-xs">Today</button>
+            </div>
+          </div>
+
+          <!-- Calendar Active Habit Info Banner -->
+          <div class="calendar-info-strip" id="calendar-info-strip">
+            <div class="cal-habit-details">
+              <span class="cal-habit-emoji" id="cal-info-emoji">💧</span>
+              <div>
+                <strong id="cal-info-name">Drink 2.5L Water</strong>
+                <span class="cal-habit-meta" id="cal-info-meta">Daily • 5 day streak</span>
+              </div>
+            </div>
+            <div class="cal-habit-stats">
+              <span class="cal-stat-pill"><strong id="cal-info-month-done">0</strong> days completed this month</span>
+            </div>
+          </div>
+
+          <!-- Days of Week Headers -->
+          <div class="calendar-weekdays-grid">
+            <div>Sun</div>
+            <div>Mon</div>
+            <div>Tue</div>
+            <div>Wed</div>
+            <div>Thu</div>
+            <div>Fri</div>
+            <div>Sat</div>
+          </div>
+
+          <!-- Monthly Grid of Day Cells -->
+          <div id="calendar-days-grid" class="calendar-days-grid">
+            <!-- Dynamically populated by JavaScript -->
+          </div>
+
+          <!-- Calendar Legend & Help Note -->
+          <div class="calendar-footer">
+            <div class="calendar-legend">
+              <div class="legend-item"><span class="legend-dot completed"></span> Completed</div>
+              <div class="legend-item"><span class="legend-dot missed"></span> Missed</div>
+              <div class="legend-item"><span class="legend-dot today-ring"></span> Today</div>
+              <div class="legend-item"><span class="legend-dot future"></span> Future</div>
+            </div>
+            <p class="calendar-help-text">💡 <strong>Interactive:</strong> Click any day to toggle completion for that specific date.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 3: STATS & ANALYTICS VIEW -->
+      <section id="view-stats" class="tab-content" role="tabpanel" aria-labelledby="tab-stats">
+        
+        <!-- Weekly Progress Chart Card -->
+        <div class="stats-card">
+          <div class="stats-card-header">
+            <div>
+              <h3 class="stats-card-title">Weekly Progress Chart</h3>
+              <p class="stats-card-subtitle">Daily completion percentage across all active habits for the last 7 days</p>
+            </div>
+            <span class="stats-badge" id="weekly-avg-badge">Avg: 0%</span>
+          </div>
+
+          <!-- Weekly Bar Chart Container -->
+          <div class="weekly-chart-wrapper">
+            <div id="weekly-bar-chart" class="weekly-bar-chart">
+              <!-- Dynamically populated with 7 bar columns -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Habit Breakdown Performance Cards -->
+        <div class="stats-card">
+          <div class="stats-card-header">
+            <div>
+              <h3 class="stats-card-title">Habit Performance & Streak Rankings</h3>
+              <p class="stats-card-subtitle">Detailed breakdown of streaks, consistency, and total completion counts</p>
+            </div>
+          </div>
+
+          <div id="stats-habit-breakdown" class="stats-table-wrapper">
+            <!-- Dynamically populated table/cards -->
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 4: REWARDS & BADGES VIEW -->
+      <section id="view-rewards" class="tab-content" role="tabpanel" aria-labelledby="tab-rewards">
+        <!-- Player Level & XP Hero Card -->
+        <div class="rewards-hero-card">
+          <div class="rewards-hero-left">
+            <div class="rewards-rank-avatar" id="rewards-rank-avatar">🌱</div>
+            <div class="rewards-rank-details">
+              <span class="rewards-rank-level" id="rewards-rank-level">Level 1</span>
+              <h3 class="rewards-rank-title" id="rewards-rank-title">Novice Scout</h3>
+              <p class="rewards-rank-desc" id="rewards-rank-desc">Complete daily habits to earn XP and level up your consistency rank!</p>
+            </div>
+          </div>
+          <div class="rewards-hero-right">
+            <div class="rewards-xp-gauge">
+              <div class="rewards-xp-header">
+                <span class="rewards-xp-label">Next Level Progress</span>
+                <span class="rewards-xp-counter" id="rewards-xp-counter">0 / 100 XP</span>
+              </div>
+              <div class="rewards-track">
+                <div class="rewards-bar-fill" id="rewards-xp-bar" style="width: 0%;"></div>
+              </div>
+              <div class="rewards-xp-footer">
+                <span id="rewards-total-xp">Total: 0 XP</span>
+                <span class="rewards-bonus-tag">⚡ +20 XP per habit</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Achievement Badges Card -->
+        <div class="stats-card">
+          <div class="stats-card-header">
+            <div>
+              <h3 class="stats-card-title">Achievement Badges</h3>
+              <p class="stats-card-subtitle">Unlock badges and earn milestone XP bonuses by building powerful routines</p>
+            </div>
+            <span class="stats-badge" id="rewards-badge-ratio">0/8 Unlocked</span>
+          </div>
+
+          <!-- Badges Grid -->
+          <div class="badges-grid" id="badges-grid">
+            <!-- Dynamically populated badges -->
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- App Footer -->
+    <footer class="app-footer">
+      <div class="footer-content">
+        <p class="footer-left">
+          <strong>HabitFlow</strong> — Built with HTML5, CSS3 &amp; Vanilla JavaScript. Client-side localStorage persistence.
+        </p>
+        <p class="footer-right">
+          Designed for GitHub Portfolio • <button id="footer-demo-btn" class="text-link">Reset to Water Habit</button>
+        </p>
+      </div>
+    </footer>
+  </div>
+
+  <!-- MODAL: ADD / EDIT HABIT -->
+  <div id="habit-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="modal-title" class="modal-title">Add New Habit</h3>
+        <button id="modal-close-btn" class="modal-close-btn" aria-label="Close dialog">✕</button>
+      </div>
+
+      <form id="habit-form" class="modal-body" novalidate>
+        <input type="hidden" id="habit-id-input" value="">
+
+        <!-- Habit Name Input with Validation Message -->
+        <div class="form-group">
+          <label for="habit-name-input" class="form-label">
+            Habit Name <span class="required">*</span>
+          </label>
+          <input 
+            type="text" 
+            id="habit-name-input" 
+            class="form-input" 
+            placeholder="e.g. Read 20 Pages, Drink 2L Water, Morning Yoga" 
+            maxlength="60"
+            required
+            autocomplete="off"
+          >
+          <div class="form-help-row">
+            <span id="name-error-msg" class="error-msg hidden">Please enter a unique habit name.</span>
+            <span id="name-char-count" class="char-count">0/60</span>
+          </div>
+        </div>
+
+        <!-- Emoji Selector -->
+        <div class="form-group">
+          <label class="form-label">Icon / Emoji</label>
+          <div class="emoji-picker-container">
+            <div class="emoji-selected-preview" id="emoji-preview">💧</div>
+            <div class="emoji-palette" id="emoji-palette">
+              <!-- Popular Habit Emojis -->
+              <button type="button" class="emoji-choice active" data-emoji="💧">💧</button>
+              <button type="button" class="emoji-choice" data-emoji="🏃">🏃</button>
+              <button type="button" class="emoji-choice" data-emoji="🧘">🧘</button>
+              <button type="button" class="emoji-choice" data-emoji="📚">📚</button>
+              <button type="button" class="emoji-choice" data-emoji="⚡">⚡</button>
+              <button type="button" class="emoji-choice" data-emoji="🥑">🥑</button>
+              <button type="button" class="emoji-choice" data-emoji="💻">💻</button>
+              <button type="button" class="emoji-choice" data-emoji="🎯">🎯</button>
+              <button type="button" class="emoji-choice" data-emoji="💤">💤</button>
+              <button type="button" class="emoji-choice" data-emoji="✍️">✍️</button>
+              <button type="button" class="emoji-choice" data-emoji="🚴">🚴</button>
+              <button type="button" class="emoji-choice" data-emoji="🧹">🧹</button>
+              <button type="button" class="emoji-choice" data-emoji="💊">💊</button>
+              <button type="button" class="emoji-choice" data-emoji="🍎">🍎</button>
+              <button type="button" class="emoji-choice" data-emoji="🏋️">🏋️</button>
+              <button type="button" class="emoji-choice" data-emoji="🧠">🧠</button>
+              <button type="button" class="emoji-choice" data-emoji="☀️">☀️</button>
+              <button type="button" class="emoji-choice" data-emoji="🍵">🍵</button>
+              <button type="button" class="emoji-choice" data-emoji="🎨">🎨</button>
+              <button type="button" class="emoji-choice" data-emoji="🌿">🌿</button>
+              <button type="button" class="emoji-choice" data-emoji="🎸">🎸</button>
+              <button type="button" class="emoji-choice" data-emoji="🚶">🚶</button>
+              <button type="button" class="emoji-choice" data-emoji="💰">💰</button>
+              <button type="button" class="emoji-choice" data-emoji="🚀">🚀</button>
+            </div>
+          </div>
+          <div class="custom-emoji-row">
+            <span class="text-xs text-muted">Or type custom emoji:</span>
+            <input type="text" id="custom-emoji-input" class="form-input-sm" maxlength="2" placeholder="🔥">
+          </div>
+        </div>
+
+        <!-- Frequency & Category Side-by-Side -->
+        <div class="form-row">
+          <!-- Frequency -->
+          <div class="form-group flex-1">
+            <label for="habit-frequency-select" class="form-label">Frequency</label>
+            <select id="habit-frequency-select" class="form-select">
+              <option value="daily">Daily (Every day)</option>
+              <option value="weekly">Weekly (Target days)</option>
+            </select>
+          </div>
+
+          <!-- Category -->
+          <div class="form-group flex-1">
+            <label for="habit-category-select" class="form-label">Category</label>
+            <select id="habit-category-select" class="form-select">
+              <option value="Health">💧 Health</option>
+              <option value="Mindfulness">🧘 Mindfulness</option>
+              <option value="Productivity">⚡ Productivity</option>
+              <option value="Fitness">🏃 Fitness</option>
+              <option value="Learning">📚 Learning</option>
+              <option value="Lifestyle">✨ Lifestyle</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Accent Color Theme -->
+        <div class="form-group">
+          <label class="form-label">Color Accent</label>
+          <div class="color-palette" id="color-palette">
+            <button type="button" class="color-choice active" data-color="#6366F1" style="background-color: #6366F1;" title="Indigo"></button>
+            <button type="button" class="color-choice" data-color="#10B981" style="background-color: #10B981;" title="Emerald"></button>
+            <button type="button" class="color-choice" data-color="#F59E0B" style="background-color: #F59E0B;" title="Amber"></button>
+            <button type="button" class="color-choice" data-color="#EC4899" style="background-color: #EC4899;" title="Rose Pink"></button>
+            <button type="button" class="color-choice" data-color="#06B6D4" style="background-color: #06B6D4;" title="Cyan"></button>
+            <button type="button" class="color-choice" data-color="#8B5CF6" style="background-color: #8B5CF6;" title="Purple"></button>
+          </div>
+        </div>
+
+        <!-- Modal Footer Actions -->
+        <div class="modal-footer">
+          <button type="button" id="btn-modal-cancel" class="btn btn-outline">Cancel</button>
+          <button type="submit" id="btn-modal-save" class="btn btn-primary">Save Habit</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: DELETE CONFIRMATION -->
+  <div id="delete-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="delete-modal-title">
+    <div class="modal-card modal-sm">
+      <div class="delete-icon-wrapper">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="12" y1="8" x2="12" y2="12"></line>
+          <line x1="12" y1="16" x2="12.01" y2="16"></line>
+        </svg>
+      </div>
+      <h3 id="delete-modal-title" class="delete-modal-title">Delete Habit?</h3>
+      <p class="delete-modal-desc">
+        Are you sure you want to delete <strong id="delete-habit-name">this habit</strong>? All completion history and streak statistics for this habit will be permanently deleted.
+      </p>
+      <div class="modal-footer justify-center">
+        <button id="btn-cancel-delete" class="btn btn-outline">Keep Habit</button>
+        <button id="btn-confirm-delete" class="btn btn-danger">Yes, Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: IMPORT DATA -->
+  <div id="import-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="import-modal-title">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="import-modal-title" class="modal-title">Import Habits Data</h3>
+        <button id="import-close-btn" class="modal-close-btn" aria-label="Close dialog">✕</button>
+      </div>
+      <div class="modal-body">
+        <p class="text-sm text-secondary mb-3">Upload a previously exported JSON backup file or paste the JSON text below.</p>
+        
+        <div class="form-group">
+          <label class="form-label">Upload JSON File</label>
+          <input type="file" id="import-file-input" accept=".json,application/json" class="form-file-input">
+        </div>
+
+        <div class="form-group">
+          <label for="import-json-textarea" class="form-label">Or Paste JSON Data</label>
+          <textarea id="import-json-textarea" class="form-textarea" rows="5" placeholder='{"habits": [...]}'></textarea>
+          <span id="import-error-msg" class="error-msg hidden">Invalid JSON format. Please check your data.</span>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" id="btn-import-cancel" class="btn btn-outline">Cancel</button>
+          <button type="button" id="btn-import-confirm" class="btn btn-primary">Restore Data</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: LEVEL UP CELEBRATION -->
+  <div id="levelup-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="levelup-title">
+    <div class="modal-card modal-sm text-center">
+      <div class="levelup-badge-flare" id="levelup-modal-emoji">🏆</div>
+      <h2 class="levelup-title" id="levelup-title">LEVEL UP!</h2>
+      <h3 class="levelup-level" id="levelup-modal-level">Level 2</h3>
+      <p class="levelup-subtitle" id="levelup-modal-title">Streak Apprentice ⚡</p>
+      <p class="levelup-desc">Your dedication and consistency are paying off. Keep your daily streak going strong!</p>
+      <div class="modal-footer justify-center">
+        <button id="btn-close-levelup" class="btn btn-primary">Keep It Going! 🔥</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Hidden File Input for Direct Import trigger -->
+  <input type="file" id="hidden-json-file-input" accept=".json,application/json" class="hidden">
+
+  <!-- Core JavaScript -->
+  <script src="script.js"></script>
+</body>
+</html>
