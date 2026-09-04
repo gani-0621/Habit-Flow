@@ -66,6 +66,13 @@
           </div>
         </div>
 
+        <!-- Notification & Reminder Status Chip -->
+        <button id="notif-perm-btn" class="notif-pill-btn" aria-label="Habit Reminders Status" title="Desktop Reminders & Sound Status">
+          <span class="notif-bell-icon">🔔</span>
+          <span class="notif-status-text" id="notif-status-text">Reminders</span>
+          <span class="notif-status-dot active" id="notif-status-dot"></span>
+        </button>
+
         <!-- Quick Add Habit Button -->
         <button id="btn-add-habit-top" class="btn btn-primary btn-sm" aria-label="Add new habit">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -630,6 +637,82 @@
           </div>
         </div>
 
+        <!-- Daily Reminder & Custom Sound Notification Section -->
+        <div class="form-group reminder-settings-card">
+          <div class="reminder-header-row">
+            <div class="reminder-title-wrap">
+              <span class="reminder-card-icon">⏰</span>
+              <div>
+                <label class="form-label mb-0" for="habit-reminder-toggle">Daily Reminder &amp; Sound</label>
+                <span class="text-xs text-secondary">Notify me at a set time with a dedicated sound</span>
+              </div>
+            </div>
+            <label class="toggle-switch" title="Toggle reminder on or off">
+              <input type="checkbox" id="habit-reminder-toggle" checked>
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+
+          <div id="reminder-fields" class="reminder-fields-group">
+            <div class="form-row">
+              <!-- Reminder Time Input -->
+              <div class="form-group flex-1 mb-0">
+                <label for="habit-reminder-time" class="form-label text-xs">
+                  Reminder Time <span class="required">*</span>
+                </label>
+                <div class="input-with-icon">
+                  <input 
+                    type="time" 
+                    id="habit-reminder-time" 
+                    class="form-input" 
+                    value="09:00" 
+                    required
+                  >
+                </div>
+              </div>
+
+              <!-- Habit Alert Sound Select with Preview Button -->
+              <div class="form-group flex-1 mb-0">
+                <label for="habit-reminder-sound" class="form-label text-xs">
+                  Notification Sound <span class="required">*</span>
+                </label>
+                <div class="sound-select-row">
+                  <select id="habit-reminder-sound" class="form-select">
+                    <option value="chime">🔔 Crystal Chime</option>
+                    <option value="zen">🧘 Zen Singing Bowl</option>
+                    <option value="ping">⚡ Digital Alert Ping</option>
+                    <option value="marimba">🎵 Acoustic Marimba</option>
+                    <option value="sparkle">✨ Sparkle Flourish</option>
+                    <option value="breeze">🕊️ Gentle Breeze</option>
+                    <option value="bell">⏰ Classic Alarm Bell</option>
+                  </select>
+                  <button 
+                    type="button" 
+                    id="btn-preview-sound" 
+                    class="btn-sound-preview" 
+                    title="Click to preview this sound" 
+                    aria-label="Preview Sound"
+                  >
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                      <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+                    </svg>
+                    <span>Play</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Quick Action: Test Reminder Right Now -->
+            <div class="reminder-test-bar">
+              <span class="text-xs text-muted">Test how this habit alerts you:</span>
+              <button type="button" id="btn-test-reminder" class="btn-test-link">
+                ⚡ Test Reminder &amp; Sound Now
+              </button>
+            </div>
+          </div>
+        </div>
+
         <!-- Modal Footer Actions -->
         <div class="modal-footer">
           <button type="button" id="btn-modal-cancel" class="btn btn-outline">Cancel</button>
@@ -699,6 +782,56 @@
       <p class="levelup-desc">Your dedication and consistency are paying off. Keep your daily streak going strong!</p>
       <div class="modal-footer justify-center">
         <button id="btn-close-levelup" class="btn btn-primary">Keep It Going! 🔥</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: HABIT REMINDER & SOUND ALERT -->
+  <div id="reminder-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="reminder-modal-title">
+    <div class="modal-card modal-sm reminder-card text-center" id="reminder-card-container">
+      <div class="reminder-animation-wrap">
+        <div class="reminder-glow-pulse" id="reminder-glow-pulse"></div>
+        <div class="reminder-habit-avatar" id="reminder-modal-emoji">💧</div>
+        <div class="reminder-sound-chip" id="reminder-sound-chip">
+          <span id="reminder-sound-icon">🔔</span>
+          <span id="reminder-sound-label">Crystal Chime</span>
+        </div>
+      </div>
+
+      <div class="reminder-time-tag" id="reminder-modal-time">⏰ 09:00 AM • Daily Reminder</div>
+      <h3 class="reminder-habit-title" id="reminder-modal-title">Drink 2.5L Water</h3>
+      <p class="reminder-habit-desc" id="reminder-modal-desc">It's time to build your streak! Take action now to keep your momentum going strong.</p>
+      
+      <div class="reminder-streak-highlight" id="reminder-streak-highlight">
+        <span class="flame-icon">🔥</span>
+        <span id="reminder-streak-text">4-day streak on the line</span>
+      </div>
+
+      <!-- 1-Minute Ringing Indicator & Quick Mute Button -->
+      <div class="reminder-ringing-banner" id="reminder-ringing-banner">
+        <span class="ringing-pulse-icon">🔔</span>
+        <span class="ringing-text" id="ringing-status-text">Playing for 1 min (<strong id="alarm-seconds-left">60s</strong>)</span>
+        <button type="button" id="btn-reminder-mute" class="btn-mute-pill" title="Stop audio now">
+          🔇 Stop Sound
+        </button>
+      </div>
+
+      <div class="reminder-actions-stack">
+        <button type="button" id="btn-reminder-done" class="btn btn-primary btn-lg w-full">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
+          <span>Mark as Done (+XP)</span>
+        </button>
+
+        <div class="reminder-sub-actions">
+          <button type="button" id="btn-reminder-snooze" class="btn btn-outline btn-sm flex-1">
+            ⏰ Snooze 5m
+          </button>
+          <button type="button" id="btn-reminder-dismiss" class="btn btn-ghost btn-sm flex-1">
+            Dismiss
+          </button>
+        </div>
       </div>
     </div>
   </div>

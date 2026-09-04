@@ -34,6 +34,10 @@
       category: 'Health',
       frequency: 'daily',
       color: '#0ea5e9',
+      reminderEnabled: true,
+      reminderTime: '10:00',
+      reminderSound: 'chime',
+      lastNotifiedDate: null,
       createdAt: getRelativeDateISO(-7),
       completedDates: generateConsecutiveDates(-3, 0) // 4-day sample streak including today
     }
@@ -222,7 +226,293 @@
   }
 
   /* ==========================================================================
-     3. Streak Engine & Analytics
+     3. Sound Synthesis Engine (Web Audio API)
+     Zero external asset dependencies — plays instantly offline & across browsers
+     ========================================================================== */
+  const SoundEngine = {
+    audioCtx: null,
+    isUnlocked: false,
+
+    SOUND_PROFILES: {
+      chime: { label: 'Crystal Chime', emoji: '🔔' },
+      zen: { label: 'Zen Singing Bowl', emoji: '🧘' },
+      ping: { label: 'Digital Alert Ping', emoji: '⚡' },
+      marimba: { label: 'Acoustic Marimba', emoji: '🎵' },
+      sparkle: { label: 'Sparkle Flourish', emoji: '✨' },
+      breeze: { label: 'Gentle Breeze', emoji: '🕊️' },
+      bell: { label: 'Classic Alarm Bell', emoji: '⏰' }
+    },
+
+    getSoundInfo(soundKey) {
+      return this.SOUND_PROFILES[soundKey] || this.SOUND_PROFILES.chime;
+    },
+
+    alarmIntervalId: null,
+    alarmTimeoutId: null,
+    countdownIntervalId: null,
+    isAlarmRunning: false,
+
+    startAlarm(soundKey = 'chime', durationMs = 60000, onTick = null, onEnd = null) {
+      this.stopAlarm();
+      this.isAlarmRunning = true;
+
+      // Natural repeat intervals per sound profile
+      const repeatDelays = {
+        chime: 2400,
+        zen: 3000,
+        ping: 1800,
+        marimba: 2200,
+        sparkle: 2400,
+        breeze: 2600,
+        bell: 1800
+      };
+      const repeatMs = repeatDelays[soundKey] || 2400;
+
+      // Play immediate first chime/melody
+      this.play(soundKey);
+
+      // Repeat loop every repeatMs
+      this.alarmIntervalId = setInterval(() => {
+        if (!this.isAlarmRunning) return;
+        this.play(soundKey);
+      }, repeatMs);
+
+      // 1-second countdown ticker for UI
+      let remainingSec = Math.round(durationMs / 1000);
+      if (onTick) onTick(remainingSec);
+
+      this.countdownIntervalId = setInterval(() => {
+        remainingSec--;
+        if (remainingSec < 0) remainingSec = 0;
+        if (onTick) onTick(remainingSec);
+        if (remainingSec <= 0) {
+          clearInterval(this.countdownIntervalId);
+          this.countdownIntervalId = null;
+        }
+      }, 1000);
+
+      // Automatically stop after durationMs (1 minute)
+      this.alarmTimeoutId = setTimeout(() => {
+        this.stopAlarm();
+        if (onEnd) onEnd();
+      }, durationMs);
+    },
+
+    stopAlarm() {
+      this.isAlarmRunning = false;
+      if (this.alarmIntervalId) {
+        clearInterval(this.alarmIntervalId);
+        this.alarmIntervalId = null;
+      }
+      if (this.countdownIntervalId) {
+        clearInterval(this.countdownIntervalId);
+        this.countdownIntervalId = null;
+      }
+      if (this.alarmTimeoutId) {
+        clearTimeout(this.alarmTimeoutId);
+        this.alarmTimeoutId = null;
+      }
+    },
+
+    init() {
+      if (this.isUnlocked && this.audioCtx) return;
+      try {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContextClass) return;
+        if (!this.audioCtx) {
+          this.audioCtx = new AudioContextClass();
+        }
+        if (this.audioCtx.state === 'suspended') {
+          this.audioCtx.resume();
+        }
+        this.isUnlocked = true;
+      } catch (e) {
+        console.warn('Web Audio API not supported or blocked:', e);
+      }
+    },
+
+    play(soundKey = 'chime') {
+      this.init();
+      if (!this.audioCtx) return;
+
+      const ctx = this.audioCtx;
+      if (ctx.state === 'suspended') {
+        ctx.resume();
+      }
+
+      const now = ctx.currentTime;
+
+      switch (soundKey) {
+        case 'zen':
+          this.playZenBowl(ctx, now);
+          break;
+        case 'ping':
+          this.playDigitalPing(ctx, now);
+          break;
+        case 'marimba':
+          this.playMarimba(ctx, now);
+          break;
+        case 'sparkle':
+          this.playSparkle(ctx, now);
+          break;
+        case 'breeze':
+          this.playBreeze(ctx, now);
+          break;
+        case 'bell':
+          this.playClassicBell(ctx, now);
+          break;
+        case 'chime':
+        default:
+          this.playCrystalChime(ctx, now);
+          break;
+      }
+    },
+
+    // 1. Crystal Chime: High shimmery harmonic bell chime
+    playCrystalChime(ctx, now) {
+      const freqs = [880, 1760, 2640];
+      freqs.forEach((freq, idx) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, now);
+
+        const initialVol = 0.28 / (idx + 1);
+        gain.gain.setValueAtTime(initialVol, now);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 1.6 - (idx * 0.2));
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 1.7);
+      });
+    },
+
+    // 2. Zen Bowl: Deep resonant meditative gong (432Hz fundamental)
+    playZenBowl(ctx, now) {
+      const freqs = [432, 864, 1296];
+      freqs.forEach((freq, idx) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = idx === 0 ? 'sine' : 'triangle';
+        osc.frequency.setValueAtTime(freq, now);
+
+        const vol = idx === 0 ? 0.35 : 0.12;
+        gain.gain.setValueAtTime(vol, now);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 2.5);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 2.6);
+      });
+    },
+
+    // 3. Digital Ping: Modern high-tech double electronic chirp
+    playDigitalPing(ctx, now) {
+      [0, 0.14].forEach((offset, idx) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        const startFreq = idx === 0 ? 587.33 : 880;
+        osc.frequency.setValueAtTime(startFreq, now + offset);
+        osc.frequency.exponentialRampToValueAtTime(startFreq * 1.3, now + offset + 0.12);
+
+        gain.gain.setValueAtTime(0.3, now + offset);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + offset + 0.22);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now + offset);
+        osc.stop(now + offset + 0.25);
+      });
+    },
+
+    // 4. Acoustic Marimba: 4-note ascending wooden chord (C5, E5, G5, C6)
+    playMarimba(ctx, now) {
+      const notes = [523.25, 659.25, 783.99, 1046.50];
+      notes.forEach((freq, idx) => {
+        const noteStart = now + (idx * 0.09);
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(freq, noteStart);
+
+        gain.gain.setValueAtTime(0.32, noteStart);
+        gain.gain.exponentialRampToValueAtTime(0.001, noteStart + 0.55);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(noteStart);
+        osc.stop(noteStart + 0.6);
+      });
+    },
+
+    // 5. Sparkle Flourish: Fast upward magical harp sparkle
+    playSparkle(ctx, now) {
+      const notes = [783.99, 987.77, 1174.66, 1567.98, 2093.00];
+      notes.forEach((freq, idx) => {
+        const noteStart = now + (idx * 0.06);
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, noteStart);
+
+        gain.gain.setValueAtTime(0.24, noteStart);
+        gain.gain.exponentialRampToValueAtTime(0.001, noteStart + 0.7);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(noteStart);
+        osc.stop(noteStart + 0.75);
+      });
+    },
+
+    // 6. Gentle Breeze: Soft ambient calming dual chime
+    playBreeze(ctx, now) {
+      [659.25, 987.77].forEach((freq, idx) => {
+        const noteStart = now + (idx * 0.12);
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, noteStart);
+
+        gain.gain.setValueAtTime(0.25, noteStart);
+        gain.gain.exponentialRampToValueAtTime(0.0005, noteStart + 2.0);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(noteStart);
+        osc.stop(noteStart + 2.1);
+      });
+    },
+
+    // 7. Classic Alarm Bell: Crisp attention pulsed ring
+    playClassicBell(ctx, now) {
+      [0, 0.18, 0.36].forEach((offset) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(800, now + offset);
+
+        const filter = ctx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(1400, now + offset);
+
+        gain.gain.setValueAtTime(0.2, now + offset);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + offset + 0.15);
+
+        osc.connect(filter);
+        filter.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now + offset);
+        osc.stop(now + offset + 0.16);
+      });
+    }
+  };
+
+  /* ==========================================================================
+     4. Streak Engine & Analytics
      ========================================================================== */
   const StreakEngine = {
     calculateCurrentStreak(habit) {
@@ -669,7 +959,297 @@
   };
 
   /* ==========================================================================
-     8. Main Application State & UI Controller
+     8. Reminder & Notification Engine
+     Clock scheduler, customizable per-habit audio alerts, snooze queue, system notifications
+     ========================================================================== */
+  const ReminderEngine = {
+    timerId: null,
+    snoozeQueue: {}, // { [habitId]: timestampMs }
+    activeHabit: null,
+    isChecking: false,
+
+    init() {
+      this.updatePermissionUI();
+      this.bindModalEvents();
+      this.bindHeaderNotifBtn();
+
+      // Check every 5 seconds for timely clock matching
+      if (this.timerId) clearInterval(this.timerId);
+      this.timerId = setInterval(() => this.checkSchedules(), 5000);
+      this.checkSchedules();
+    },
+
+    bindHeaderNotifBtn() {
+      const btn = document.getElementById('notif-perm-btn');
+      btn?.addEventListener('click', async () => {
+        SoundEngine.init();
+
+        if (!('Notification' in window)) {
+          App.showToast('🔊 In-app sound alerts are active!');
+          return;
+        }
+
+        if (Notification.permission === 'default') {
+          try {
+            const perm = await Notification.requestPermission();
+            this.updatePermissionUI();
+            if (perm === 'granted') {
+              App.showToast('🔔 Desktop notifications & sound alerts enabled!');
+            } else {
+              App.showToast('ℹ️ In-app audio alerts will remain active.');
+            }
+          } catch (err) {
+            console.warn('Error requesting notification permission:', err);
+          }
+        } else if (Notification.permission === 'granted') {
+          App.showToast('✅ Desktop notifications and sound are active!');
+        } else {
+          App.showToast('⚠️ Desktop notifications are blocked in browser settings. In-app alerts remain active.');
+        }
+      });
+    },
+
+    updatePermissionUI() {
+      const statusText = document.getElementById('notif-status-text');
+      const dot = document.getElementById('notif-status-dot');
+      if (!statusText || !dot) return;
+
+      if (!('Notification' in window)) {
+        statusText.textContent = 'Audio Alerts';
+        dot.className = 'notif-status-dot active';
+        return;
+      }
+
+      if (Notification.permission === 'granted') {
+        statusText.textContent = 'Reminders Active';
+        dot.className = 'notif-status-dot active';
+      } else if (Notification.permission === 'denied') {
+        statusText.textContent = 'In-App Only';
+        dot.className = 'notif-status-dot blocked';
+      } else {
+        statusText.textContent = 'Enable Alerts';
+        dot.className = 'notif-status-dot';
+      }
+    },
+
+    bindModalEvents() {
+      const modal = document.getElementById('reminder-modal');
+      const doneBtn = document.getElementById('btn-reminder-done');
+      const snoozeBtn = document.getElementById('btn-reminder-snooze');
+      const dismissBtn = document.getElementById('btn-reminder-dismiss');
+      const muteBtn = document.getElementById('btn-reminder-mute');
+
+      doneBtn?.addEventListener('click', () => this.completeActiveHabit());
+      snoozeBtn?.addEventListener('click', () => this.snoozeActiveHabit(5));
+      dismissBtn?.addEventListener('click', () => this.closeReminderModal());
+
+      muteBtn?.addEventListener('click', () => {
+        SoundEngine.stopAlarm();
+        if (muteBtn) {
+          muteBtn.textContent = '🔇 Sound Muted';
+          muteBtn.classList.add('muted');
+        }
+        const statusText = document.getElementById('ringing-status-text');
+        if (statusText) statusText.textContent = 'Sound stopped';
+      });
+
+      modal?.addEventListener('click', (e) => {
+        if (e.target === modal) this.closeReminderModal();
+      });
+    },
+
+    checkSchedules() {
+      if (this.isChecking) return;
+      this.isChecking = true;
+
+      try {
+        const now = new Date();
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        const currentClockTime = `${hours}:${minutes}`;
+        const todayKey = getTodayKey();
+        const nowMs = Date.now();
+
+        // 1. Process Snoozed Habits first
+        Object.keys(this.snoozeQueue).forEach(habitId => {
+          if (nowMs >= this.snoozeQueue[habitId]) {
+            delete this.snoozeQueue[habitId];
+            const habit = App.habits.find(h => h.id === habitId);
+            if (habit) {
+              const isDone = habit.completedDates?.includes(todayKey);
+              if (!isDone) {
+                this.triggerReminder(habit, true);
+              }
+            }
+          }
+        });
+
+        // 2. Process Scheduled Habits
+        if (Array.isArray(App.habits)) {
+          App.habits.forEach(habit => {
+            if (!habit.reminderEnabled || !habit.reminderTime) return;
+
+            if (habit.reminderTime === currentClockTime) {
+              // Trigger once per day per habit
+              if (habit.lastNotifiedDate !== todayKey) {
+                const isDone = habit.completedDates?.includes(todayKey);
+                if (!isDone) {
+                  habit.lastNotifiedDate = todayKey;
+                  StorageManager.saveHabits(App.habits);
+                  this.triggerReminder(habit, false);
+                }
+              }
+            }
+          });
+        }
+      } catch (err) {
+        console.error('Error during reminder schedule check:', err);
+      } finally {
+        this.isChecking = false;
+      }
+    },
+
+    triggerReminder(habit, isSnoozed = false) {
+      if (!habit) return;
+      this.activeHabit = habit;
+
+      // Start 1-minute (60 seconds) continuous alarm sound loop!
+      const soundKey = habit.reminderSound || 'chime';
+      const muteBtn = document.getElementById('btn-reminder-mute');
+      if (muteBtn) {
+        muteBtn.textContent = '🔇 Stop Sound';
+        muteBtn.classList.remove('muted');
+      }
+
+      SoundEngine.startAlarm(
+        soundKey,
+        60000, // Runs for 1 full minute (60,000 ms)
+        (remainingSec) => {
+          const statusText = document.getElementById('ringing-status-text');
+          if (statusText) {
+            statusText.innerHTML = `Playing for 1 min (<strong id="alarm-seconds-left">${remainingSec}s</strong>)`;
+          }
+        },
+        () => {
+          const statusText = document.getElementById('ringing-status-text');
+          if (statusText) {
+            statusText.textContent = 'Sound finished (1 min)';
+          }
+          if (muteBtn) {
+            muteBtn.textContent = 'Sound Ended';
+          }
+        }
+      );
+
+      // Desktop system notification
+      this.sendDesktopNotification(habit, isSnoozed);
+
+      // In-app rich reminder modal
+      this.showReminderModal(habit, isSnoozed);
+    },
+
+    sendDesktopNotification(habit, isSnoozed = false) {
+      if (!('Notification' in window) || Notification.permission !== 'granted') return;
+
+      try {
+        const streak = StreakEngine.calculateCurrentStreak(habit);
+        const soundInfo = SoundEngine.getSoundInfo(habit.reminderSound || 'chime');
+        const title = `${habit.emoji} Habit Reminder: ${habit.name}`;
+        const body = isSnoozed
+          ? `⏰ Snooze reminder: Time to ${habit.name}! Current streak: 🔥 ${streak} day${streak === 1 ? '' : 's'}.`
+          : `⏰ It's ${this.formatTime12h(habit.reminderTime)}! Time for ${habit.name}. Keep your streak alive! (${soundInfo.label})`;
+
+        const notif = new Notification(title, {
+          body: body,
+          icon: 'assets/favicon.svg',
+          tag: `habit-reminder-${habit.id}`,
+          renotify: true
+        });
+
+        notif.onclick = () => {
+          window.focus();
+          notif.close();
+        };
+      } catch (err) {
+        console.warn('System notification error:', err);
+      }
+    },
+
+    showReminderModal(habit, isSnoozed = false) {
+      const modal = document.getElementById('reminder-modal');
+      const card = document.getElementById('reminder-card-container');
+      if (!modal || !card) return;
+
+      const habitColor = habit.color || '#6366F1';
+      card.style.setProperty('--reminder-accent', habitColor);
+      card.style.setProperty('--reminder-accent-glow', `${habitColor}50`);
+      card.style.setProperty('--reminder-accent-bg', `${habitColor}18`);
+
+      document.getElementById('reminder-modal-emoji').textContent = habit.emoji || '✨';
+
+      const soundInfo = SoundEngine.getSoundInfo(habit.reminderSound || 'chime');
+      document.getElementById('reminder-sound-icon').textContent = soundInfo.emoji;
+      document.getElementById('reminder-sound-label').textContent = soundInfo.label;
+
+      const time12h = this.formatTime12h(habit.reminderTime || '09:00');
+      document.getElementById('reminder-modal-time').textContent = `⏰ ${time12h} • ${isSnoozed ? 'Snooze Alert' : 'Daily Reminder'}`;
+      document.getElementById('reminder-modal-title').textContent = habit.name;
+
+      const streak = StreakEngine.calculateCurrentStreak(habit);
+      const streakEl = document.getElementById('reminder-streak-text');
+      if (streak > 0) {
+        streakEl.textContent = `${streak}-day streak on the line! Keep the fire burning 🔥`;
+      } else {
+        streakEl.textContent = 'Day 1 of your new streak! Start strong today 🌱';
+      }
+
+      modal.classList.remove('hidden');
+    },
+
+    closeReminderModal() {
+      // Stop the 1-minute audio immediately
+      SoundEngine.stopAlarm();
+      const modal = document.getElementById('reminder-modal');
+      modal?.classList.add('hidden');
+      this.activeHabit = null;
+    },
+
+    completeActiveHabit() {
+      // Stop the 1-minute audio immediately
+      SoundEngine.stopAlarm();
+      if (!this.activeHabit) return;
+      const habit = this.activeHabit;
+      this.closeReminderModal();
+      // Directly check in habit
+      App.toggleHabitCompletion(habit.id);
+    },
+
+    snoozeActiveHabit(minutes = 5) {
+      // Stop the 1-minute audio immediately
+      SoundEngine.stopAlarm();
+      if (!this.activeHabit) return;
+      const habit = this.activeHabit;
+      const triggerTime = Date.now() + (minutes * 60 * 1000);
+      this.snoozeQueue[habit.id] = triggerTime;
+      this.closeReminderModal();
+      App.showToast(`⏰ Snoozed "${habit.name}" for ${minutes} minutes`);
+    },
+
+    formatTime12h(timeStr) {
+      if (!timeStr) return '';
+      const parts = timeStr.split(':');
+      let h = parseInt(parts[0], 10);
+      const m = parts[1] || '00';
+      if (isNaN(h)) return timeStr;
+      const ampm = h >= 12 ? 'PM' : 'AM';
+      h = h % 12;
+      if (h === 0) h = 12;
+      return `${h}:${m} ${ampm}`;
+    }
+  };
+
+  /* ==========================================================================
+     9. Main Application State & UI Controller
      ========================================================================== */
   const App = {
     habits: [],
@@ -694,6 +1274,10 @@
       if (this.habits.length > 0) {
         this.calendarHabitId = this.habits[0].id;
       }
+
+      // Initialize Sound Synthesis & Reminder Scheduler
+      SoundEngine.init();
+      ReminderEngine.init();
 
       // Initialize Rewards & Gamification
       RewardsManager.init(this.habits);
@@ -874,6 +1458,42 @@
         });
       });
 
+      // Reminder Toggle & Audio Preview Listeners
+      const reminderToggle = document.getElementById('habit-reminder-toggle');
+      const reminderFields = document.getElementById('reminder-fields');
+      const reminderSoundSelect = document.getElementById('habit-reminder-sound');
+      const previewSoundBtn = document.getElementById('btn-preview-sound');
+      const testReminderBtn = document.getElementById('btn-test-reminder');
+
+      reminderToggle?.addEventListener('change', () => {
+        reminderFields?.classList.toggle('disabled', !reminderToggle.checked);
+      });
+
+      previewSoundBtn?.addEventListener('click', () => {
+        const soundKey = reminderSoundSelect?.value || 'chime';
+        previewSoundBtn.classList.add('playing');
+        SoundEngine.play(soundKey);
+        setTimeout(() => previewSoundBtn.classList.remove('playing'), 500);
+      });
+
+      testReminderBtn?.addEventListener('click', () => {
+        const nameInputVal = document.getElementById('habit-name-input')?.value.trim() || 'Sample Habit';
+        const timeVal = document.getElementById('habit-reminder-time')?.value || '09:00';
+        const soundVal = reminderSoundSelect?.value || 'chime';
+
+        const mockHabit = {
+          id: this.editingHabitId || 'temp_test',
+          name: nameInputVal,
+          emoji: this.selectedFormEmoji || '💧',
+          color: this.selectedFormColor || '#6366F1',
+          reminderTime: timeVal,
+          reminderSound: soundVal,
+          completedDates: []
+        };
+
+        ReminderEngine.triggerReminder(mockHabit, false);
+      });
+
       form?.addEventListener('submit', (e) => {
         e.preventDefault();
         this.handleHabitFormSubmit();
@@ -1027,6 +1647,17 @@
       document.getElementById('habit-frequency-select').value = 'daily';
       document.getElementById('habit-category-select').value = 'Health';
 
+      // Reset reminder fields
+      const reminderToggle = document.getElementById('habit-reminder-toggle');
+      const reminderTimeInput = document.getElementById('habit-reminder-time');
+      const reminderSoundSelect = document.getElementById('habit-reminder-sound');
+      const reminderFields = document.getElementById('reminder-fields');
+
+      if (reminderToggle) reminderToggle.checked = true;
+      if (reminderTimeInput) reminderTimeInput.value = '09:00';
+      if (reminderSoundSelect) reminderSoundSelect.value = 'chime';
+      if (reminderFields) reminderFields.classList.remove('disabled');
+
       document.querySelectorAll('.emoji-choice').forEach(btn => {
         btn.classList.toggle('active', btn.getAttribute('data-emoji') === '💧');
       });
@@ -1059,6 +1690,18 @@
       document.getElementById('custom-emoji-input').value = '';
       document.getElementById('habit-frequency-select').value = habit.frequency || 'daily';
       document.getElementById('habit-category-select').value = habit.category || 'Health';
+
+      // Populate reminder fields
+      const reminderToggle = document.getElementById('habit-reminder-toggle');
+      const reminderTimeInput = document.getElementById('habit-reminder-time');
+      const reminderSoundSelect = document.getElementById('habit-reminder-sound');
+      const reminderFields = document.getElementById('reminder-fields');
+
+      const isReminderOn = habit.reminderEnabled !== undefined ? habit.reminderEnabled : true;
+      if (reminderToggle) reminderToggle.checked = isReminderOn;
+      if (reminderTimeInput) reminderTimeInput.value = habit.reminderTime || '09:00';
+      if (reminderSoundSelect) reminderSoundSelect.value = habit.reminderSound || 'chime';
+      if (reminderFields) reminderFields.classList.toggle('disabled', !isReminderOn);
 
       document.querySelectorAll('.emoji-choice').forEach(btn => {
         btn.classList.toggle('active', btn.getAttribute('data-emoji') === this.selectedFormEmoji);
@@ -1105,6 +1748,14 @@
       const frequency = document.getElementById('habit-frequency-select').value;
       const category = document.getElementById('habit-category-select').value;
 
+      const reminderToggle = document.getElementById('habit-reminder-toggle');
+      const reminderTimeInput = document.getElementById('habit-reminder-time');
+      const reminderSoundSelect = document.getElementById('habit-reminder-sound');
+
+      const reminderEnabled = reminderToggle ? reminderToggle.checked : true;
+      const reminderTime = (reminderTimeInput && reminderTimeInput.value) ? reminderTimeInput.value : '09:00';
+      const reminderSound = (reminderSoundSelect && reminderSoundSelect.value) ? reminderSoundSelect.value : 'chime';
+
       if (this.editingHabitId) {
         const habit = this.habits.find(h => h.id === this.editingHabitId);
         if (habit) {
@@ -1113,6 +1764,9 @@
           habit.color = this.selectedFormColor;
           habit.frequency = frequency;
           habit.category = category;
+          habit.reminderEnabled = reminderEnabled;
+          habit.reminderTime = reminderTime;
+          habit.reminderSound = reminderSound;
           this.showToast(`✏️ Updated "${habit.name}"`);
         }
       } else {
@@ -1123,6 +1777,10 @@
           category: category,
           frequency: frequency,
           color: this.selectedFormColor,
+          reminderEnabled: reminderEnabled,
+          reminderTime: reminderTime,
+          reminderSound: reminderSound,
+          lastNotifiedDate: null,
           createdAt: getTodayKey(),
           completedDates: []
         };
@@ -1427,6 +2085,14 @@
                 <div class="habit-meta-row">
                   <span class="habit-category-tag">${habit.category || 'General'}</span>
                   <span class="habit-frequency-tag">${habit.frequency === 'weekly' ? 'Weekly Target' : 'Daily'}</span>
+                  ${(habit.reminderEnabled && habit.reminderTime) ? `
+                    <span class="habit-reminder-chip sound-${habit.reminderSound || 'chime'}" title="Daily Reminder at ${ReminderEngine.formatTime12h(habit.reminderTime)} with ${SoundEngine.getSoundInfo(habit.reminderSound || 'chime').label}">
+                      <span>⏰</span>
+                      <span>${ReminderEngine.formatTime12h(habit.reminderTime)}</span>
+                      <span>•</span>
+                      <span>${SoundEngine.getSoundInfo(habit.reminderSound || 'chime').emoji} ${SoundEngine.getSoundInfo(habit.reminderSound || 'chime').label}</span>
+                    </span>
+                  ` : ''}
                 </div>
               </div>
             </div>
@@ -1807,6 +2473,11 @@
      ========================================================================== */
   document.addEventListener('DOMContentLoaded', () => {
     App.init();
+
+    // Auto-unlock Web Audio API on first user interaction anywhere
+    ['click', 'keydown', 'touchstart'].forEach(evt => {
+      window.addEventListener(evt, () => SoundEngine.init(), { once: true, passive: true });
+    });
   });
 
 })();

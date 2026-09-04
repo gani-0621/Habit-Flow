@@ -91,7 +91,24 @@ habit-tracker/
   - 👑 **Elite Consistency** (Reach Level 3)
 - **Level-Up Celebration Modal**: Interactive celebration with custom avatar flare and confetti burst upon reaching new ranks.
 
-### 7. 🎨 Modern Design & Theming
+### 7. ⏰ Scheduled Habit Reminders & Custom Sound Alerts (Web Audio API)
+- **Per-Habit Time Scheduling**: Set custom reminder times (e.g., `07:30 AM`, `14:00`, `21:30`) for each habit independently.
+- **Custom Sound Synthesizer**: 7 distinct audio profiles generated via standard browser Web Audio API:
+  - 🔔 **Crystal Chime**: Shimmering bell harmonic chime (880Hz + 1760Hz).
+  - 🧘 **Zen Singing Bowl**: Deep meditative resonance (432Hz fundamental with slow acoustic decay).
+  - ⚡ **Digital Alert Ping**: High-tech modern double chirp.
+  - 🎵 **Acoustic Marimba**: 4-note ascending wooden chord arpeggio.
+  - ✨ **Sparkle Flourish**: Uplifting harp flourish.
+  - 🕊️ **Gentle Breeze**: Soothing dual-tone ambient chime.
+  - ⏰ **Classic Alarm Bell**: Crisp attention-grabbing pulsed bell.
+- **Zero External Dependencies**: Synthesized in real time — 100% offline-ready, no broken `.mp3` links or network lag.
+- **Multi-Channel Notification**:
+  - **In-App Reminder Modal**: Tactile dialog with habit accent glow, streak status, and direct **✓ Mark as Done (+XP)** or **⏰ Snooze 5m** buttons.
+  - **Desktop Web Notifications**: System-level notifications that alert you even when working in another tab or application.
+  - **Card Indicator Badge**: Habit cards display their scheduled time and sound icon (e.g. `⏰ 10:00 AM • 🔔 Crystal Chime`).
+- **Sound Preview & Instant Test**: Audition sounds with one click and test the full reminder experience directly from the habit modal.
+
+### 8. 🎨 Modern Design & Theming
 - **Curated Color System**: High-contrast, elegant typography (`Plus Jakarta Sans`) and tailored slate/indigo palette.
 - **Light & Dark Mode**: Seamless toggle that saves user preference in `localStorage`.
 - **Fully Responsive**: Optimized for mobile devices (375px+), tablets, and widescreen desktop monitors.
