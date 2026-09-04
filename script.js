@@ -2471,13 +2471,19 @@
   /* ==========================================================================
      Bootstrap App
      ========================================================================== */
-  document.addEventListener('DOMContentLoaded', () => {
+  function startApp() {
     App.init();
 
     // Auto-unlock Web Audio API on first user interaction anywhere
     ['click', 'keydown', 'touchstart'].forEach(evt => {
       window.addEventListener(evt, () => SoundEngine.init(), { once: true, passive: true });
     });
-  });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', startApp);
+  } else {
+    startApp();
+  }
 
 })();
